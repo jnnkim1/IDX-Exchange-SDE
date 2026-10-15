@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
+const isValidListingId = (id) => /^\d{1,10}$/.test(id);
+
 router.get('/', async (req, res) => {
     try {
         const { city, zipcode, minPrice, maxPrice, beds, baths } = req.query;
@@ -43,7 +45,7 @@ router.get('/', async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'baths must be a valid positive integer' });
         }
 
-        if (minPrice && maxPrice && parseFloat(minPrice) > parseFloat(maxPrice)) {
+        if (minPrice && maxPrice && Number(minPrice) > Number(maxPrice)) {
             return res.status(400).json({ status: 'error', message: 'minPrice cannot be greater than maxPrice' });
         }
 
@@ -72,12 +74,12 @@ router.get('/', async (req, res) => {
         }
 
         if (beds) {
-            query += ' AND L_Keyword2 >= ?';
+            query += ' AND L_Keyword2 = ?';
             values.push(beds);
         }
 
         if (baths) {
-            query += ' AND LM_Dec_3 >= ?';
+            query += ' AND LM_Dec_3 = ?';
             values.push(baths);
         }
         
@@ -96,6 +98,69 @@ router.get('/', async (req, res) => {
         console.error('Invalid input', error);
         res.status(500).json({ status: 'error', message: 'Could not retrieve properties' });
     }
-})
+});
+
+router.get('/:id/openhouses', async (req, res) => {
+    if (!isValidListingId(req.params.id)) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Listing ID must be 1 to 10 digits'
+        });
+    }
+
+    try {
+        const [properties] = await pool.query(
+            'SELECT L_ListingID FROM rets_property WHERE L_ListingID = ?',
+            [req.params.id]
+        );
+
+        if (properties.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: `Property with listing ID ${req.params.id} was not found`
+            });
+        }
+
+        const [rows] = await pool.query(
+            `SELECT * FROM rets_openhouse
+             WHERE L_ListingID = ?
+             ORDER BY OpenHouseDate ASC, OH_StartTime ASC`,
+            [req.params.id]
+        );
+
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('Error retrieving open houses:', error);
+        res.status(500).json({ status: 'error', message: 'Could not retrieve open houses' });
+    }
+});
+
+router.get('/:id', async (req, res) => {
+    if (!isValidListingId(req.params.id)) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Listing ID must be 1 to 10 digits'
+        });
+    }
+
+    try {
+        const [rows] = await pool.query(
+            'SELECT * FROM rets_property WHERE L_ListingID = ?',
+            [req.params.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: `Property with listing ID ${req.params.id} was not found`
+            });
+        }
+
+        res.status(200).json(rows[0]);
+    } catch (error) {
+        console.error('Error retrieving property:', error);
+        res.status(500).json({ status: 'error', message: 'Could not retrieve property' });
+    }
+});
 
 module.exports = router;
