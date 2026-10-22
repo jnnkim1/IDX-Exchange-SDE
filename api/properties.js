@@ -88,7 +88,7 @@ router.get('/', async (req, res) => {
         const pageValues = [...values, limit, offset];
         const [rows] = await pool.query(
             `SELECT L_ListingID, L_Address, L_City, L_State, L_Zip,
-                    L_SystemPrice, L_Keyword2, LM_Dec_3, LM_Int2_3
+                    L_SystemPrice, L_Keyword2, LM_Dec_3, LM_Int2_3, L_Photos
              ${query} ORDER BY id ASC LIMIT ? OFFSET ?`,
             pageValues
         );
