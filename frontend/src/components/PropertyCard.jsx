@@ -10,6 +10,11 @@ export default function PropertyCard({
   onHover,
   onClick,
 }) {
+  const formattedPrice =
+  price === null || price === undefined || price === ''
+    ? 'Price unavailable'
+    : `${Number(price).toLocaleString('en-US')}`;
+
   const cardClass =
     "property-card";
 
@@ -32,10 +37,12 @@ export default function PropertyCard({
           alt={`Property at ${address}, ${city}, ${state}`}
         />
       ) : (
-        <p className="text-lg text-gray-400">No image available</p>
+        <div className="property-card-image-placeholder">
+          No image available
+        </div>
       )}
       <div className="property-card-details">
-        <h3 className="text-2xl font-bold">${price}</h3>
+        <h3 className="text-2xl font-bold">${formattedPrice}</h3>
         <p className="text-lg">{address}</p>
         <p className="text-lg">{city}, {state}</p>
         <p className="text-lg">{bedrooms} beds | {bathrooms} baths | {squareFeet} sqft</p>
