@@ -82,16 +82,43 @@ router.get('/', async (req, res) => {
             query += ' AND LM_Dec_3 = ?';
             values.push(baths);
         }
-        
+
         const [countRows] = await pool.query(`SELECT COUNT(*) AS total ${query}`, values);
 
-        const pageValues = [...values, limit, offset];
+        const totalCount = countRows[0].total;
+
+        const rowsOnPage = Math.min(
+            limit,
+            Math.max(totalCount - offset, 0)
+        );
+
+        const distanceFromEnd =
+            totalCount - offset - rowsOnPage;
+
+        const loadFromEnd = distanceFromEnd < offset;
+
+        const sortDirection = loadFromEnd ? 'DESC' : 'ASC';
+
+        const queryOffset = loadFromEnd
+            ? distanceFromEnd
+            : offset;
+
+        const pageValues = [
+            ...values,
+            rowsOnPage,
+            queryOffset,
+        ];
+
         const [rows] = await pool.query(
             `SELECT L_ListingID, L_Address, L_City, L_State, L_Zip,
                     L_SystemPrice, L_Keyword2, LM_Dec_3, LM_Int2_3, L_Photos
-             ${query} ORDER BY id ASC LIMIT ? OFFSET ?`,
+             ${query} ORDER BY id ${sortDirection} LIMIT ? OFFSET ?`,
             pageValues
         );
+
+        if (loadFromEnd) {
+            rows.reverse();
+        }
 
         res.status(200).json({ total: countRows[0].total, limit, offset, results: rows });
     } catch (error) {

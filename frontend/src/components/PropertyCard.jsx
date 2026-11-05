@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 export default function PropertyCard({
   image,
   price,
@@ -10,10 +12,12 @@ export default function PropertyCard({
   onHover,
   onClick,
 }) {
+  const [imageError, setImageError] = useState(false);
+
   const formattedPrice =
-  price === null || price === undefined || price === ''
-    ? 'Price unavailable'
-    : `${Number(price).toLocaleString('en-US')}`;
+    price === null || price === undefined || price === ''
+      ? 'Price unavailable'
+      : `${Number(price).toLocaleString('en-US')}`;
 
   const cardClass =
     "property-card";
@@ -21,8 +25,13 @@ export default function PropertyCard({
   let firstPhoto = null;
   try {
     let images = JSON.parse(image || '[]');
-    if (Array.isArray(images) && images.length > 0) {
-      firstPhoto = images[0];
+    if (Array.isArray(images)) {
+      firstPhoto =
+        images.find(
+          (url) =>
+            typeof url === 'string' &&
+            url.includes('/PHOTO-')
+        ) || null;
     }
   } catch (error) {
     firstPhoto = null;
@@ -30,11 +39,12 @@ export default function PropertyCard({
   }
   const content = (
     <>
-      {firstPhoto ? (
+      {firstPhoto && !imageError ? (
         <img
           className="property-card-image"
           src={firstPhoto}
           alt={`Property at ${address}, ${city}, ${state}`}
+          onError={() => setImageError(true)}
         />
       ) : (
         <div className="property-card-image-placeholder">
