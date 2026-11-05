@@ -30,15 +30,15 @@ test('pagination is hidden when there is only one page', async () => {
 test('previous button is disabled on the first page', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
-        total: 24,
-        results: Array.from({ length: 10 }, (_, index) => ({
+        total: 44,
+        results: Array.from({ length: 20 }, (_, index) => ({
             L_ListingID: index + 1,
             L_Photos: '[]'
         }))
     });
 
     render(<ListingsPage />);
-    await screen.findByText(/showing 1-10 of 24 properties/i);
+    await screen.findByText(/showing 1-20 of 44 properties/i);
 
     expect(screen.queryByRole('button', { name: /previous/i })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /next/i })).not.toBeDisabled();
@@ -47,24 +47,24 @@ test('previous button is disabled on the first page', async () => {
 test('clicking page 2 fetches correct offset', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
-        total: 24,
-        results: Array.from({ length: 10 }, (_, index) => ({
-            L_ListingID: index + 11,
+        total: 44,
+        results: Array.from({ length: 20 }, (_, index) => ({
+            L_ListingID: index + 21,
             L_Photos: '[]'
         })),
-        limit: 10,
-        offset: 10
+        limit: 20,
+        offset: 20
     });
 
     render(<ListingsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /2/i }));
     await waitFor(() => expect(mockFetchProperties).toHaveBeenCalledWith(expect.objectContaining({
-        limit: 10,
-        offset: 10
+        limit: 20,
+        offset: 20
     })));
 
     expect(
-        await screen.findByText(/showing 11-20 of 24 properties/i)
+        await screen.findByText(/showing 21-40 of 44 properties/i)
     ).toBeInTheDocument();
 })
 
@@ -72,9 +72,9 @@ test('clicking page 2 fetches correct offset', async () => {
 test('next button is disabled on the last page', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
-        total: 24,
+        total: 44,
         results: Array.from({ length: 4 }, (_, index) => ({
-            L_ListingID: index + 21,
+            L_ListingID: index + 41,
             L_Photos: '[]'
         }))
     });
@@ -82,7 +82,7 @@ test('next button is disabled on the last page', async () => {
     render(<ListingsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /3/i }));
 
-    await screen.findByText(/showing 21-24 of 24 properties/i);
+    await screen.findByText(/showing 41-44 of 44 properties/i);
 
     expect(screen.queryByRole('button', { name: /previous/i })).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: /next/i })).toBeDisabled();
@@ -91,8 +91,8 @@ test('next button is disabled on the last page', async () => {
 test('ellipses appear correctly when there are many pages', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
-        total: 240,
-        results: Array.from({ length: 10 }, (_, index) => ({
+        total: 480,
+        results: Array.from({ length: 20 }, (_, index) => ({
             L_ListingID: index + 1,
             L_Photos: '[]'
         }))
@@ -106,7 +106,7 @@ test('ellipses appear correctly when there are many pages', async () => {
     fireEvent.click(await screen.findByRole('button', { name: '5' }));
 
     expect(
-        await screen.findByText(/showing 41-50 of 240 properties/i)
+        await screen.findByText(/showing 81-100 of 480 properties/i)
     ).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
@@ -121,8 +121,8 @@ test('ellipses appear correctly when there are many pages', async () => {
 test('apply filters resets to page 1', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
-        total: 24,
-        results: Array.from({ length: 10 }, (_, index) => ({
+        total: 44,
+        results: Array.from({ length: 20 }, (_, index) => ({
             L_ListingID: index + 1,
             L_Photos: '[]'
         }))
@@ -137,7 +137,7 @@ test('apply filters resets to page 1', async () => {
 
     await waitFor(() => expect(mockFetchProperties).toHaveBeenCalledWith(expect.objectContaining({
         city: 'Irvine',
-        limit: 10,
+        limit: 20,
         offset: 0
     })));
 })
