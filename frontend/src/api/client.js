@@ -31,3 +31,11 @@ export async function fetchPropertyDetails(listingId) {
     }
     return response.json();
 }
+
+export async function fetchOpenHouses(listingId) {
+    const response = await fetch(`/api/properties/${listingId}/openhouses`);
+    if (!response.ok) {
+        throw new Error(`Open house request failed: ${response.status}`);
+    }
+    return response.json();
+}

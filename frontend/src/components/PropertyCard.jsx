@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import PropertyImageCarousel from './PropertyImageCarousel';
 
 export default function PropertyCard({
   image,
@@ -12,45 +12,24 @@ export default function PropertyCard({
   onHover,
   onClick,
 }) {
-  const [imageError, setImageError] = useState(false);
-
+  const numericPrice = Number(price);
   const formattedPrice =
-    price === null || price === undefined || price === ''
+    price === null ||
+    price === undefined ||
+    price === '' ||
+    !Number.isFinite(numericPrice)
       ? 'Price unavailable'
-      : `${Number(price).toLocaleString('en-US')}`;
+      : numericPrice.toLocaleString('en-US');
 
   const cardClass =
     "property-card";
 
-  let firstPhoto = null;
-  try {
-    let images = JSON.parse(image || '[]');
-    if (Array.isArray(images)) {
-      firstPhoto =
-        images.find(
-          (url) =>
-            typeof url === 'string' &&
-            url.includes('/PHOTO-')
-        ) || null;
-    }
-  } catch (error) {
-    firstPhoto = null;
-    console.error('Error parsing image:', error);
-  }
   const content = (
     <>
-      {firstPhoto && !imageError ? (
-        <img
-          className="property-card-image"
-          src={firstPhoto}
-          alt={`Property at ${address}, ${city}, ${state}`}
-          onError={() => setImageError(true)}
-        />
-      ) : (
-        <div className="property-card-image-placeholder">
-          No image available
-        </div>
-      )}
+      <PropertyImageCarousel
+        images={image}
+        alt={`Property at ${address}, ${city}, ${state}`}
+      />
       <div className="property-card-details">
         <h3 className="text-2xl font-bold">${formattedPrice}</h3>
         <p className="text-lg">{address}</p>
@@ -60,17 +39,26 @@ export default function PropertyCard({
     </>
   );
 
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick?.();
+    }
+  }
+
   return (
-    <button
-      type="button"
+    <article
       className={cardClass}
+      role="link"
+      tabIndex="0"
       onMouseEnter={onHover}
       onMouseLeave={onHover}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       aria-label={`View property at ${address}, ${city}, ${state}`}
     >
 
       {content}
-    </button>
+    </article>
   );
 }

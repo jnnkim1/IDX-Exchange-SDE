@@ -1,4 +1,4 @@
-import PropertyCard from './PropertyCard';
+import PropertyCard from '../components/PropertyCard';
 import PropertyFilters from './PropertyFilters';
 import { useState, useEffect } from 'react';
 import { fetchProperties } from '../api/client';
@@ -59,6 +59,10 @@ export default function ListingsPage() {
     setCurrentPage(newPage);
   }
 
+  function handlePropertyClick(property) {
+    window.location.href = `/property/${property.L_ListingID}`;
+  }
+
   useEffect(() => {
     const loadProperties = async () => {
       setLoading(true);
@@ -98,6 +102,7 @@ export default function ListingsPage() {
               {properties.map((property) => (
                 <PropertyCard
                   key={property.L_ListingID}
+                  onClick={() => handlePropertyClick(property)}
                   image={property.L_Photos}
                   price={property.L_SystemPrice}
                   address={property.L_Address}
