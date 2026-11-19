@@ -57,7 +57,7 @@ test('GET /api/properties keeps minPrice and beds aligned in the count query', a
     assert.equal(body.total, 1);
     assert.match(calls[0].sql, /L_SystemPrice >= \?.*L_Keyword2 = \?/s);
     assert.deepEqual(calls[0].values, ['500000', '3']);
-    assert.deepEqual(calls[1].values, ['500000', '3', 20, 0]);
+    assert.deepEqual(calls[1].values, ['500000', '3', 1, 0]);
 });
 
 test('GET /api/properties/:id returns the full property or 404', async (t) => {
@@ -148,4 +148,70 @@ test('openhouses handles a rejected database query', async (t) => {
         status: 'error',
         message: 'Could not retrieve open houses'
     });
+});
+
+test('rejects invalid sortBy values', async (t) => {
+    let queryCount = 0;
+
+    const baseUrl = await startPropertiesApp(t, async () => {
+        queryCount += 1;
+        return [[]];
+    });
+
+    const response = await fetch(
+        `${baseUrl}/api/properties?sortBy=ListPrice&sortOrder=ASC`
+    );
+
+    assert.equal(response.status, 400);
+    assert.equal(queryCount, 0);
+
+    const body = await response.json();
+    assert.match(body.message, /invalid sortBy/i);
+});
+
+test('rejects invalid sortOrder values', async (t) => {
+    let queryCount = 0;
+
+    const baseUrl = await startPropertiesApp(t, async () => {
+        queryCount += 1;
+        return [[]];
+    });
+
+    const response = await fetch(
+        `${baseUrl}/api/properties?sortBy=L_SystemPrice&sortOrder=SIDEWAYS`
+    );
+
+    assert.equal(response.status, 400);
+    assert.equal(queryCount, 0);
+});
+
+test('uses validated price and posting-date sorting in property queries', async (t) => {
+    const calls = [];
+
+    const baseUrl = await startPropertiesApp(t, async (sql, values) => {
+        calls.push({ sql, values: [...values] });
+
+        if (sql.startsWith('SELECT COUNT(*)')) {
+            return [[{ total: 20 }]];
+        }
+
+        return [[]];
+    });
+
+    const priceResponse = await fetch(
+        `${baseUrl}/api/properties?sortBy=L_SystemPrice&sortOrder=DESC`
+    );
+
+    assert.equal(priceResponse.status, 200);
+    assert.match(calls[1].sql, /ORDER BY L_SystemPrice DESC, id DESC/);
+
+    const dateResponse = await fetch(
+        `${baseUrl}/api/properties?sortBy=OriginalEntryTimestamp&sortOrder=ASC`
+    );
+
+    assert.equal(dateResponse.status, 200);
+    assert.match(
+        calls[3].sql,
+        /ORDER BY OriginalEntryTimestamp ASC, id ASC/
+    );
 });

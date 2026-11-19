@@ -1,9 +1,15 @@
 import PropertyCard from '../components/PropertyCard';
 import PropertyFilters from './PropertyFilters';
+import PropertySort from './PropertySort';
 import { useState, useEffect } from 'react';
 import { fetchProperties } from '../api/client';
 
 const PAGE_SIZE = 20;
+
+const DEFAULT_SORT = {
+  sortBy: 'id',
+  sortOrder: 'ASC',
+};
 
 function getPagination(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -37,6 +43,7 @@ export default function ListingsPage() {
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
   const [activeFilters, setActiveFilters] = useState({});
+  const [activeSort, setActiveSort] = useState(DEFAULT_SORT);
   const [currentPage, setCurrentPage] = useState(1);
 
   const offset = (currentPage - 1) * PAGE_SIZE;
@@ -49,6 +56,12 @@ export default function ListingsPage() {
 
   function handleFilterSubmit(newFilters) {
     setActiveFilters(newFilters);
+    setActiveSort(DEFAULT_SORT);
+    setCurrentPage(1);
+  }
+
+  function handleSortSubmit(sort) {
+    setActiveSort(sort);
     setCurrentPage(1);
   }
 
@@ -70,7 +83,7 @@ export default function ListingsPage() {
 
       try {
 
-        const data = await fetchProperties({ ...activeFilters, limit: PAGE_SIZE, offset: offset });
+        const data = await fetchProperties({ ...activeFilters, ...activeSort, limit: PAGE_SIZE, offset: offset });
         setProperties(data.results);
         setTotal(data.total);
       } catch (error) {
@@ -81,19 +94,25 @@ export default function ListingsPage() {
     };
 
     loadProperties();
-  }, [activeFilters, offset]);
+  }, [activeFilters, activeSort, offset]);
 
   return (
     <>
       <PropertyFilters onSubmit={handleFilterSubmit} />
 
       {loading ? (
-        <p>Loading properties...</p>
+        <p className="listings-status">Loading properties...</p>
       ) : error ? (
-        <p>Error: {error}</p>
+        <p className="listings-status listings-error">Error: {error}</p>
       ) : (
         <>
-          <p>Showing {firstResult}-{lastResult} of {total} properties</p>
+          <div className="results-toolbar">
+            <p>Showing {firstResult}-{lastResult} of {total} properties</p>
+            <PropertySort
+              onSubmit={handleSortSubmit}
+              value={activeSort}
+            />
+          </div>
 
           {properties.length === 0 ? (
             <p>No properties match your filters.</p>

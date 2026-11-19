@@ -5,18 +5,21 @@ export async function fetchProperties({
     maxPrice = '',
     beds = '',
     baths = '',
+    sortBy = 'id',
+    sortOrder = 'ASC',
     limit = 20,
     offset = 0 } = {}) {
     const queryParams = new URLSearchParams({
         limit,
         offset,
     });
-    const optionalFilters = { city, zipcode, minPrice, maxPrice, beds, baths };
+    const optionalFilters = { city, zipcode, minPrice, maxPrice, beds, baths, sortBy, sortOrder };
     for (const [key, value] of Object.entries(optionalFilters)) {
         if (value !== '') {
             queryParams.append(key, value);
         }
     }
+
     const response = await fetch(`/api/properties?${queryParams.toString()}`);
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);

@@ -5,10 +5,9 @@ test('displays all six filter inputs with empty initial values', async () => {
     const mockOnSubmit = jest.fn();
 
     render(<PropertyFilters onSubmit={mockOnSubmit} />);
-    fireEvent.click(screen.getByRole('button', { name: /show filters/i }));
 
     const cityInput = screen.getByLabelText(/city/i);
-    const zipcodeInput = screen.getByLabelText(/zipcode/i);
+    const zipcodeInput = screen.getByLabelText(/zip code/i);
     const minPriceInput = screen.getByLabelText(/min price/i);
     const maxPriceInput = screen.getByLabelText(/max price/i);
     const bedsInput = screen.getByLabelText(/beds/i);
@@ -28,10 +27,6 @@ test('submits selected filter criteria', () => {
 
     render(<PropertyFilters onSubmit={mockOnSubmit} />);
 
-    fireEvent.click(
-        screen.getByRole('button', { name: /show filters/i })
-    );
-
     const cityInput = screen.getByLabelText(/city/i);
     const bedsInput = screen.getByLabelText(/beds/i);
 
@@ -44,7 +39,7 @@ test('submits selected filter criteria', () => {
     });
 
     fireEvent.click(
-        screen.getByRole('button', { name: /apply filters/i })
+        screen.getByRole('button', { name: /^apply$/i })
     );
 
     expect(mockOnSubmit).toHaveBeenCalledWith(
@@ -59,10 +54,6 @@ test('clears entered filter values', () => {
   const mockOnSubmit = jest.fn();
 
   render(<PropertyFilters onSubmit={mockOnSubmit} />);
-
-  fireEvent.click(
-    screen.getByRole('button', { name: /show filters/i })
-  );
 
   const cityInput = screen.getByLabelText(/city/i);
   const bedsInput = screen.getByLabelText(/beds/i);

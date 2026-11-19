@@ -39,6 +39,12 @@ export default function PropertyImageGallery({ images }) {
   function handleLightboxKeyDown(event) {
     if (event.key === 'Escape') {
       setLightboxOpen(false);
+    } else if (event.key === 'ArrowLeft') {
+      changeImage(
+        (selectedIndex - 1 + parsedImages.length) % parsedImages.length
+      );
+    } else if (event.key === 'ArrowRight') {
+      changeImage((selectedIndex + 1) % parsedImages.length);
     }
   }
 
@@ -136,6 +142,37 @@ export default function PropertyImageGallery({ images }) {
           >
             <span aria-hidden="true">&times;</span>
           </button>
+
+          {parsedImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="lightbox-arrow lightbox-arrow-left"
+                aria-label="Previous enlarged property image"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  changeImage(
+                    (selectedIndex - 1 + parsedImages.length) %
+                      parsedImages.length
+                  );
+                }}
+              >
+                <span aria-hidden="true">&lsaquo;</span>
+              </button>
+
+              <button
+                type="button"
+                className="lightbox-arrow lightbox-arrow-right"
+                aria-label="Next enlarged property image"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  changeImage((selectedIndex + 1) % parsedImages.length);
+                }}
+              >
+                <span aria-hidden="true">&rsaquo;</span>
+              </button>
+            </>
+          )}
 
           <img
             src={selectedImage}

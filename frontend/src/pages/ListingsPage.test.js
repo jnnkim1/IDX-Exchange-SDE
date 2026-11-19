@@ -130,10 +130,9 @@ test('apply filters resets to page 1', async () => {
     render(<ListingsPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: /2/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /show filters/i }));
     const cityInput = screen.getByLabelText(/city/i);
     fireEvent.change(cityInput, { target: { value: 'Irvine' } });
-    fireEvent.click(screen.getByRole('button', { name: /apply filters/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^apply$/i }));
 
     await waitFor(() => expect(mockFetchProperties).toHaveBeenCalledWith(expect.objectContaining({
         city: 'Irvine',
@@ -141,4 +140,77 @@ test('apply filters resets to page 1', async () => {
         offset: 0
     })));
 })
+
+test('sort persists when navigating to another page', async () => {
+    fetchProperties.mockResolvedValue({
+        total: 44,
+        results: Array.from({ length: 20 }, (_, index) => ({
+            L_ListingID: index + 1,
+            L_Photos: '[]'
+        }))
+    });
+
+    render(<ListingsPage />);
+
+    fireEvent.change(await screen.findByLabelText(/sort by/i), {
+        target: { value: 'L_SystemPrice:DESC' }
+    });
+
+    await waitFor(() => expect(fetchProperties).toHaveBeenCalledWith(
+        expect.objectContaining({
+            sortBy: 'L_SystemPrice',
+            sortOrder: 'DESC',
+            offset: 0
+        })
+    ));
+
+    fireEvent.click(await screen.findByRole('button', { name: '2' }));
+
+    await waitFor(() => expect(fetchProperties).toHaveBeenCalledWith(
+        expect.objectContaining({
+            sortBy: 'L_SystemPrice',
+            sortOrder: 'DESC',
+            offset: 20
+        })
+    ));
+});
+
+test('applying filters resets sorting and pagination', async () => {
+    fetchProperties.mockResolvedValue({
+        total: 44,
+        results: Array.from({ length: 20 }, (_, index) => ({
+            L_ListingID: index + 1,
+            L_Photos: '[]'
+        }))
+    });
+
+    render(<ListingsPage />);
+
+    fireEvent.change(await screen.findByLabelText(/sort by/i), {
+        target: { value: 'L_SystemPrice:DESC' }
+    });
+
+    await waitFor(() => expect(fetchProperties).toHaveBeenCalledWith(
+        expect.objectContaining({
+            sortBy: 'L_SystemPrice',
+            sortOrder: 'DESC'
+        })
+    ));
+
+    fireEvent.change(screen.getByLabelText(/city/i), {
+        target: { value: 'Irvine' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^apply$/i }));
+
+    await waitFor(() => expect(fetchProperties).toHaveBeenCalledWith(
+        expect.objectContaining({
+            city: 'Irvine',
+            sortBy: 'id',
+            sortOrder: 'ASC',
+            offset: 0
+        })
+    ));
+
+    expect(await screen.findByLabelText(/sort by/i)).toHaveValue('id:ASC');
+});
 

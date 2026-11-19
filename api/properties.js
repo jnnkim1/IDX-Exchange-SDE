@@ -6,7 +6,7 @@ const isValidListingId = (id) => /^\d{1,10}$/.test(id);
 
 router.get('/', async (req, res) => {
     try {
-        const { city, zipcode, minPrice, maxPrice, beds, baths } = req.query;
+        const { city, zipcode, minPrice, maxPrice, beds, baths, sortBy = 'id', sortOrder = 'ASC' } = req.query;
         const limit = req.query.limit === undefined
             ? 20
             : Number(req.query.limit);
@@ -14,6 +14,30 @@ router.get('/', async (req, res) => {
         const offset = req.query.offset === undefined
             ? 0
             : Number(req.query.offset);
+
+        const validSortColumns = new Set([
+            'id',
+            'L_SystemPrice',
+            'OriginalEntryTimestamp',
+            'LM_Int2_3',
+        ]);
+
+        const validSortOrders = new Set(['ASC', 'DESC']);
+        const normalizedSortOrder = String(sortOrder).toUpperCase();
+
+        if (!validSortColumns.has(sortBy)) {
+            return res.status(400).json({
+                status: 'error',
+                message: `Invalid sortBy value: ${sortBy}`,
+            });
+        }
+
+        if (!validSortOrders.has(normalizedSortOrder)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'sortOrder must be ASC or DESC',
+            });
+        }
 
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
             return res.status(400).json({
@@ -97,7 +121,12 @@ router.get('/', async (req, res) => {
 
         const loadFromEnd = distanceFromEnd < offset;
 
-        const sortDirection = loadFromEnd ? 'DESC' : 'ASC';
+        const querySortDirection = loadFromEnd ? normalizedSortOrder === 'ASC' ? 'DESC' : 'ASC' : normalizedSortOrder;
+
+        const orderByClause =
+            sortBy === 'id'
+                ? `id ${querySortDirection}`
+                : `${sortBy} ${querySortDirection}, id ${querySortDirection}`;
 
         const queryOffset = loadFromEnd
             ? distanceFromEnd
@@ -111,8 +140,10 @@ router.get('/', async (req, res) => {
 
         const [rows] = await pool.query(
             `SELECT L_ListingID, L_Address, L_City, L_State, L_Zip,
-                    L_SystemPrice, L_Keyword2, LM_Dec_3, LM_Int2_3, L_Photos
-             ${query} ORDER BY id ${sortDirection} LIMIT ? OFFSET ?`,
+                    L_SystemPrice, L_Keyword2, LM_Dec_3, LM_Int2_3, L_Photos, OriginalEntryTimestamp
+             ${query}
+             ORDER BY ${orderByClause}
+             LIMIT ? OFFSET ?`,
             pageValues
         );
 

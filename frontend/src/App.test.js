@@ -13,7 +13,13 @@ test('renders the listings route', async () => {
   fetchProperties.mockResolvedValue({ total: 0, results: [] });
 
   render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter
+      initialEntries={['/']}
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <App />
     </MemoryRouter>
   );
