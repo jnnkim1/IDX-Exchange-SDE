@@ -66,7 +66,6 @@ test('clears entered filter values', () => {
     target: { value: '3' },
   });
 
-  // Confirm values changed before clearing
   expect(cityInput.value).toBe('Denver');
   expect(bedsInput.value).toBe('3');
 

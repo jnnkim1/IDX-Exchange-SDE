@@ -1,70 +1,226 @@
-# Getting Started with Create React App
+# IDX Exchange
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack property search application inspired by Zillow and Redfin. It uses real MLS property data and allows users to search, filter, sort, and explore detailed property listings.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Search properties by city and ZIP code
+- Filter by price, bedrooms, and bathrooms
+- Sort by price, listing date, and square footage
+- Paginated property results
+- Responsive property cards with image carousels
+- Property detail pages
+- Image gallery with thumbnails and a lightbox
+- Google Maps property locations and directions
+- Open-house dates, times, and remarks
+- Loading, empty, API error, and render error states
 
-### `npm start`
+## Technology
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Frontend
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- React
+- Create React App
+- React Router
+- PropTypes
+- Jest
+- React Testing Library
+- CSS
 
-### `npm test`
+### Backend
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js
+- Express
+- MySQL
+- Docker
 
-### `npm run build`
+## Project Structure
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```text
+frontend/src/
+|-- api/          API request functions
+|-- components/   Reusable interface components
+|-- hooks/        Reusable React hooks
+|-- pages/        Route-level page components
+|-- utils/        Shared helper functions
+|-- App.js        Application routes and layout
+`-- index.js      React application entry point
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Important frontend files include:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- `api/client.js`: Sends property requests to the Express API
+- `components/PropertyCard.jsx`: Displays property summary information
+- `components/PropertyImageCarousel.jsx`: Displays listing-card photos
+- `components/PropertyImageGallery.jsx`: Displays detail-page photos and the lightbox
+- `components/PropertyMap.jsx`: Embeds the property location with Google Maps
+- `components/ErrorBoundary.jsx`: Displays recovery UI for React render failures
+- `pages/ListingsPage.jsx`: Displays filters, sorting, listings, and pagination
+- `pages/PropertyDetailPage.jsx`: Displays complete property information
 
-### `npm run eject`
+## Requirements
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Before starting the application, install:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- Node.js
+- npm
+- Docker
+- MySQL 8, running locally or inside Docker
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The Express API expects the MySQL database to be available before it starts.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Installation
 
-## Learn More
+Install backend dependencies from the repository root:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm install
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Install frontend dependencies:
 
-### Code Splitting
+```bash
+cd frontend
+npm install
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Environment Variables
 
-### Analyzing the Bundle Size
+Create a `.env` file in the repository root:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```env
+PORT=5000
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=your_mysql_user
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_DATABASE=rets
+```
 
-### Making a Progressive Web App
+Create `frontend/.env.local` to enable Google Maps:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```env
+REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
 
-### Advanced Configuration
+Do not commit either environment file or expose real credentials. Restart the React development server after changing frontend environment variables.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Running the Application
 
-### Deployment
+The backend and frontend run in separate terminals.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Start the backend
 
-### `npm run build` fails to minify
+From the repository root:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```bash
+npm run dev
+```
+
+The Express API runs at `http://localhost:5000`.
+
+### Start the frontend
+
+From the `frontend` directory:
+
+```bash
+npm start
+```
+
+The React application runs at `http://localhost:3000`.
+
+The frontend proxy forwards requests beginning with `/api` to the Express server on port 5000.
+
+## Frontend Scripts
+
+Run these commands from the `frontend` directory.
+
+### Start the development server
+
+```bash
+npm start
+```
+
+### Run tests once
+
+```bash
+npm test -- --watchAll=false
+```
+
+### Run the linter
+
+```bash
+npm run lint
+```
+
+### Create a production build
+
+```bash
+npm run build
+```
+
+The optimized application is created in `frontend/build`.
+
+## Backend Tests
+
+Run backend tests from the repository root:
+
+```bash
+npm test
+```
+
+## Routes
+
+| Route | Description |
+| --- | --- |
+| `/` | Property listings, filters, sorting, and pagination |
+| `/property/:id` | Property details, photos, map, and open houses |
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/health` | Checks API and database availability |
+| `GET` | `/api/properties` | Returns filtered, sorted, and paginated properties |
+| `GET` | `/api/properties/:id` | Returns one property's details |
+| `GET` | `/api/properties/:id/openhouses` | Returns open houses for a property |
+
+## Quality Checks
+
+Before committing frontend changes, run:
+
+```bash
+npm run lint
+npm test -- --watchAll=false
+npm run build
+```
+
+Also run the backend tests from the repository root:
+
+```bash
+npm test
+```
+
+## Git Workflow
+
+Development uses the following branch structure:
+
+```text
+main
+`-- develop
+    |-- feature/frontend-organization
+    |-- feature/lint-cleanup
+    `-- feature/project-documentation
+```
+
+Commit messages follow Conventional Commit format:
+
+```text
+type(scope): short description
+```
+
+Example:
+
+```text
+fix(pagination): reset to first page when filters change
+```
