@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import usePropertyPhotos from '../hooks/usePropertyPhotos';
 
 export default function PropertyImageGallery({ images }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const parsedImages = usePropertyPhotos(images);
   const lightboxRef = useRef(null);
 
   useEffect(() => {
@@ -11,21 +13,6 @@ export default function PropertyImageGallery({ images }) {
       lightboxRef.current?.focus();
     }
   }, [lightboxOpen]);
-
-  let parsedImages = [];
-
-  try {
-    const parsed =
-      typeof images === 'string' ? JSON.parse(images || '[]') : images;
-
-    if (Array.isArray(parsed)) {
-      parsedImages = parsed.filter(
-        (image) => typeof image === 'string' && image.length > 0
-      );
-    }
-  } catch (error) {
-    parsedImages = [];
-  }
 
   if (parsedImages.length === 0) {
     return <div className="gallery-placeholder">No images available</div>;
