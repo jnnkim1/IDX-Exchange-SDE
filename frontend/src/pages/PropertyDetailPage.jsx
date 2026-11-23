@@ -49,7 +49,7 @@ function getOpenHouseRemarks(allData) {
 
     const text = String(remarks).trim();
     return text || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -82,7 +82,7 @@ function formatDetailValue(value) {
       if (Array.isArray(parsed)) {
         return parsed.map(humanizeDetailValue).join(', ');
       }
-    } catch (error) {
+    } catch {
       // The value is a normal string rather than JSON.
     }
 

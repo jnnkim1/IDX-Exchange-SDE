@@ -12,7 +12,7 @@ app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
 
     res.on('finish', () => {
-        console.log(`${timestamp} ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+        console.info(`${timestamp} ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
     });
 
     next();
@@ -25,7 +25,7 @@ app.use('/api/properties', require('./api/properties'));
 
 if (require.main === module) {
     app.listen(port, () => {
-        console.log(`Server is running on port: ${port}`);
+        console.info(`Server is running on port: ${port}`);
     });
 }
 
