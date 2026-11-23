@@ -1,26 +1,10 @@
 import { useState } from 'react';
+import usePropertyPhotos from '../hooks/usePropertyPhotos';
 
 export default function PropertyImageCarousel({ images, alt = 'Property' }) {
   const [imageError, setImageError] = useState(false);
   const [index, setIndex] = useState(0);
-
-  let parsedImages = [];
-
-  try {
-    const parsed = typeof images === 'string' ? JSON.parse(images || '[]') : images;
-    
-    if (Array.isArray(parsed)) {
-      parsedImages = parsed.filter(
-        (image) =>
-          typeof image === 'string' &&
-          image.length > 0
-      );
-    }
-    
-  } catch (error) {
-
-    parsedImages = [];
-  }
+  const parsedImages = usePropertyPhotos(images);
 
   const totalImages = parsedImages.length;
 
