@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import PropertyImageCarousel from './PropertyImageCarousel';
 
 export default function PropertyCard({
@@ -62,3 +63,19 @@ export default function PropertyCard({
     </article>
   );
 }
+
+PropertyCard.propTypes = {
+  image: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.arrayOf(PropTypes.string),
+  ]),
+  price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  address: PropTypes.string,
+  city: PropTypes.string,
+  state: PropTypes.string,
+  bedrooms: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  bathrooms: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  squareFeet: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onHover: PropTypes.func,
+  onClick: PropTypes.func,
+};
