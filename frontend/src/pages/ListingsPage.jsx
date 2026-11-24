@@ -37,7 +37,7 @@ function getPagination(currentPage, totalPages) {
   return pages;
 }
 
-export default function ListingsPage() {
+export default function ListingsPage({ isFavorite = () => false, toggleFavorite = () => {} }) {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -130,6 +130,8 @@ export default function ListingsPage() {
                   bedrooms={property.L_Keyword2}
                   bathrooms={property.LM_Dec_3}
                   squareFeet={property.LM_Int2_3}
+                  isFavorite={isFavorite(property.L_ListingID)}
+                  onFavoriteToggle={() => toggleFavorite(property)}
                 />
               ))}
             </div>
