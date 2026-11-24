@@ -12,13 +12,15 @@ export default function PropertyCard({
   squareFeet,
   onHover,
   onClick,
+  isFavorite,
+  onFavoriteToggle,
 }) {
   const numericPrice = Number(price);
   const formattedPrice =
     price === null ||
-    price === undefined ||
-    price === '' ||
-    !Number.isFinite(numericPrice)
+      price === undefined ||
+      price === '' ||
+      !Number.isFinite(numericPrice)
       ? 'Price unavailable'
       : numericPrice.toLocaleString('en-US');
 
@@ -40,6 +42,15 @@ export default function PropertyCard({
     </>
   );
 
+  function handleFavoriteClick(event) {
+    event.stopPropagation();
+    onFavoriteToggle?.();
+  }
+
+  function handleFavoriteKeyDown(event) {
+    event.stopPropagation();
+  }
+
   function handleKeyDown(event) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -58,7 +69,26 @@ export default function PropertyCard({
       onKeyDown={handleKeyDown}
       aria-label={`View property at ${address}, ${city}, ${state}`}
     >
-
+      <button
+        type="button"
+        className={
+          isFavorite
+            ? 'favorite-button is-favorite'
+            : 'favorite-button'
+        }
+        aria-label={
+          isFavorite
+            ? `Remove ${address} from favorites`
+            : `Add ${address} to favorites`
+        }
+        aria-pressed={isFavorite}
+        onClick={handleFavoriteClick}
+        onKeyDown={handleFavoriteKeyDown}
+      >
+        <span aria-hidden="true">
+          {isFavorite ? '\u2665' : '\u2661'}
+        </span>
+      </button>
       {content}
     </article>
   );
@@ -78,4 +108,6 @@ PropertyCard.propTypes = {
   squareFeet: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onHover: PropTypes.func,
   onClick: PropTypes.func,
+  isFavorite: PropTypes.bool,
+  onFavoriteToggle: PropTypes.func,
 };
