@@ -28,6 +28,19 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/pages/PropertyFilters.jsx",
+      "src/components/Pagination.jsx",
+      "src/components/PropertyCard.jsx"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 70,
+        "lines": 70
+      }
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 
 const initialFilters = {
     city: '',
@@ -9,7 +10,7 @@ const initialFilters = {
     baths: '',
 };
 
-export default function PropertyFilters({ onSubmit }) {
+export default function PropertyFilters({ onSearch }) {
 
     const [filters, setFilters] = useState(initialFilters);
 
@@ -24,12 +25,12 @@ export default function PropertyFilters({ onSubmit }) {
 
     function handleFilterSubmit(event) {
         event.preventDefault();
-        onSubmit(filters);
+        onSearch(filters);
     }
 
     function handleClearFilters() {
         setFilters(initialFilters);
-        onSubmit(initialFilters);
+        onSearch(initialFilters);
     }
 
     return (
@@ -137,3 +138,7 @@ export default function PropertyFilters({ onSubmit }) {
         </div>
     );
 }
+
+PropertyFilters.propTypes = {
+    onSearch: PropTypes.func.isRequired,
+};

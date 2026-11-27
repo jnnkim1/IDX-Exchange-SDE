@@ -38,7 +38,7 @@ function getOpenHouseRemarks(allData) {
   try {
     let parsed = allData;
 
-    // Handle a JSON string, an already-parsed object, or a double-encoded string.
+      // This data might be JSON text, an object, or JSON text inside JSON text.
     for (let attempt = 0; attempt < 2 && typeof parsed === 'string'; attempt += 1) {
       parsed = JSON.parse(parsed);
     }
@@ -83,7 +83,7 @@ function formatDetailValue(value) {
         return parsed.map(humanizeDetailValue).join(', ');
       }
     } catch {
-      // The value is a normal string rather than JSON.
+        // If JSON.parse fails, this is just a regular text value.
     }
 
     return value

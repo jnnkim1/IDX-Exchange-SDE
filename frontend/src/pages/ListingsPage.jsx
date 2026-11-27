@@ -1,7 +1,9 @@
 import PropertyCard from '../components/PropertyCard';
+import Pagination from '../components/Pagination';
 import PropertyFilters from './PropertyFilters';
 import PropertySort from './PropertySort';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchProperties } from '../api/client';
 
 const PAGE_SIZE = 20;
@@ -11,33 +13,8 @@ const DEFAULT_SORT = {
   sortOrder: 'ASC',
 };
 
-function getPagination(currentPage, totalPages) {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-  
-  const pages = [1];
-  const startPage = Math.max(2, currentPage - 1);
-  const endPage = Math.min(totalPages - 1, currentPage + 1);
-
-  if (startPage > 2) {
-    pages.push('...');
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    pages.push(i);
-  }
-
-  if (endPage < totalPages - 1) {
-    pages.push('...');
-  }
-
-  pages.push(totalPages);
-
-  return pages;
-}
-
 export default function ListingsPage({ isFavorite = () => false, toggleFavorite = () => {} }) {
+  const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,8 +28,6 @@ export default function ListingsPage({ isFavorite = () => false, toggleFavorite 
 
   const firstResult = total === 0 ? 0 : offset + 1;
   const lastResult = offset + properties.length;
-
-  const pagination = getPagination(currentPage, totalPages);
 
   function handleFilterSubmit(newFilters) {
     setActiveFilters(newFilters);
@@ -73,7 +48,7 @@ export default function ListingsPage({ isFavorite = () => false, toggleFavorite 
   }
 
   function handlePropertyClick(property) {
-    window.location.href = `/property/${property.L_ListingID}`;
+    navigate(`/property/${property.L_ListingID}`);
   }
 
   useEffect(() => {
@@ -98,7 +73,7 @@ export default function ListingsPage({ isFavorite = () => false, toggleFavorite 
 
   return (
     <>
-      <PropertyFilters onSubmit={handleFilterSubmit} />
+      <PropertyFilters onSearch={handleFilterSubmit} />
 
       {loading ? (
         <p className="listings-status">Loading properties...</p>
@@ -136,31 +111,11 @@ export default function ListingsPage({ isFavorite = () => false, toggleFavorite 
               ))}
             </div>
           )}
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-                Previous
-              </button>
-              {pagination.map((item, index) => (
-                typeof item === 'number' ? (
-                <button
-                  aria-current={item === currentPage ? 'page' : undefined}
-                  className={item === currentPage ? 'active' : ''}
-                  key={item}
-                  onClick={() => handlePageChange(item)}
-                >
-                  {item}
-                </button>
-              ) : (
-                <span key={`ellipsis-${index}`}>{item}</span>
-              )
-              ))}
-
-              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages}>
-                Next
-              </button>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </>
       )}
     </>

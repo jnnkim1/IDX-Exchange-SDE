@@ -4,7 +4,7 @@ import PropertyFilters from './PropertyFilters';
 test('displays all six filter inputs with empty initial values', async () => {
     const mockOnSubmit = jest.fn();
 
-    render(<PropertyFilters onSubmit={mockOnSubmit} />);
+    render(<PropertyFilters onSearch={mockOnSubmit} />);
 
     const cityInput = screen.getByLabelText(/city/i);
     const zipcodeInput = screen.getByLabelText(/zip code/i);
@@ -25,7 +25,7 @@ test('displays all six filter inputs with empty initial values', async () => {
 test('submits selected filter criteria', () => {
     const mockOnSubmit = jest.fn();
 
-    render(<PropertyFilters onSubmit={mockOnSubmit} />);
+    render(<PropertyFilters onSearch={mockOnSubmit} />);
 
     const cityInput = screen.getByLabelText(/city/i);
     const bedsInput = screen.getByLabelText(/beds/i);
@@ -53,7 +53,7 @@ test('submits selected filter criteria', () => {
 test('clears entered filter values', () => {
   const mockOnSubmit = jest.fn();
 
-  render(<PropertyFilters onSubmit={mockOnSubmit} />);
+  render(<PropertyFilters onSearch={mockOnSubmit} />);
 
   const cityInput = screen.getByLabelText(/city/i);
   const bedsInput = screen.getByLabelText(/beds/i);

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ListingsPage from './ListingsPage';
 import { fetchProperties } from '../api/client';
 
@@ -10,6 +11,19 @@ beforeEach(() => {
     fetchProperties.mockReset();
 });
 
+function renderListingsPage() {
+    return render(
+        <MemoryRouter
+            future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+            }}
+        >
+            <ListingsPage />
+        </MemoryRouter>
+    );
+}
+
 test('pagination is hidden when there is only one page', async () => {
     const mockFetchProperties = require('../api/client').fetchProperties;
     mockFetchProperties.mockResolvedValue({
@@ -20,7 +34,7 @@ test('pagination is hidden when there is only one page', async () => {
         }]
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
     await screen.findByText(/showing 1-1 of 1 properties/i);
 
     expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
@@ -37,7 +51,7 @@ test('previous button is disabled on the first page', async () => {
         }))
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
     await screen.findByText(/showing 1-20 of 44 properties/i);
 
     expect(screen.queryByRole('button', { name: /previous/i })).toBeDisabled();
@@ -56,7 +70,7 @@ test('clicking page 2 fetches correct offset', async () => {
         offset: 20
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
     fireEvent.click(await screen.findByRole('button', { name: /2/i }));
     await waitFor(() => expect(mockFetchProperties).toHaveBeenCalledWith(expect.objectContaining({
         limit: 20,
@@ -79,7 +93,7 @@ test('next button is disabled on the last page', async () => {
         }))
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
     fireEvent.click(await screen.findByRole('button', { name: /3/i }));
 
     await screen.findByText(/showing 41-44 of 44 properties/i);
@@ -98,7 +112,7 @@ test('ellipses appear correctly when there are many pages', async () => {
         }))
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
 
     fireEvent.click(await screen.findByRole('button', { name: '2' }));
     fireEvent.click(await screen.findByRole('button', { name: '3' }));
@@ -127,7 +141,7 @@ test('apply filters resets to page 1', async () => {
             L_Photos: '[]'
         }))
     });
-    render(<ListingsPage />);
+    renderListingsPage();
 
     fireEvent.click(await screen.findByRole('button', { name: /2/i }));
     const cityInput = screen.getByLabelText(/city/i);
@@ -150,7 +164,7 @@ test('sort persists when navigating to another page', async () => {
         }))
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
 
     fireEvent.change(await screen.findByLabelText(/sort by/i), {
         target: { value: 'L_SystemPrice:DESC' }
@@ -184,7 +198,7 @@ test('applying filters resets sorting and pagination', async () => {
         }))
     });
 
-    render(<ListingsPage />);
+    renderListingsPage();
 
     fireEvent.change(await screen.findByLabelText(/sort by/i), {
         target: { value: 'L_SystemPrice:DESC' }
@@ -212,5 +226,50 @@ test('applying filters resets sorting and pagination', async () => {
     ));
 
     expect(await screen.findByLabelText(/sort by/i)).toHaveValue('id:ASC');
+});
+
+test('clicking a property card navigates to its detail page', async () => {
+    fetchProperties.mockResolvedValue({
+        total: 1,
+        results: [{
+            L_ListingID: '123',
+            L_Photos: '[]',
+            L_SystemPrice: 450000,
+            L_Address: '1 Test Street',
+            L_City: 'Denver',
+            L_State: 'CO',
+            L_Keyword2: 3,
+            LM_Dec_3: 2,
+            LM_Int2_3: 1800,
+        }],
+    });
+
+    render(
+        <MemoryRouter
+            initialEntries={['/']}
+            future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+            }}
+        >
+            <Routes>
+                <Route path="/" element={<ListingsPage />} />
+                <Route
+                    path="/property/:id"
+                    element={<p>Property detail route</p>}
+                />
+            </Routes>
+        </MemoryRouter>
+    );
+
+    fireEvent.click(
+        await screen.findByRole('link', {
+            name: /view property at 1 test street/i,
+        })
+    );
+
+    expect(
+        await screen.findByText('Property detail route')
+    ).toBeInTheDocument();
 });
 

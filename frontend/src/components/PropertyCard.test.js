@@ -87,3 +87,57 @@ test('shows the filled favorite state', () => {
     })
   ).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('shows a fallback when the price is unavailable', () => {
+  render(
+    <PropertyCard
+      {...propertyProps}
+      price={null}
+    />
+  );
+
+  expect(screen.getByText('Price unavailable')).toBeInTheDocument();
+});
+
+test.each(['Enter', ' '])(
+  'activates card navigation with the %p key',
+  (key) => {
+    const onClick = jest.fn();
+
+    render(
+      <PropertyCard
+        {...propertyProps}
+        onClick={onClick}
+      />
+    );
+
+    fireEvent.keyDown(
+      screen.getByRole('link', {
+        name: /view property at 1 test street/i,
+      }),
+      { key }
+    );
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  }
+);
+
+test('favorite keyboard events do not activate card navigation', () => {
+  const onClick = jest.fn();
+
+  render(
+    <PropertyCard
+      {...propertyProps}
+      onClick={onClick}
+    />
+  );
+
+  fireEvent.keyDown(
+    screen.getByRole('button', {
+      name: /add 1 test street to favorites/i,
+    }),
+    { key: 'Enter' }
+  );
+
+  expect(onClick).not.toHaveBeenCalled();
+});
