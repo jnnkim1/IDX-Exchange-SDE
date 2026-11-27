@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test test",
+    "test": "jest --runInBand",
+    "test:coverage": "jest --coverage --runInBand",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
@@ -20,6 +21,21 @@
     "url": "https://github.com/jnnkim1/IDX-Exchange-SDE/issues"
   },
   "homepage": "https://github.com/jnnkim1/IDX-Exchange-SDE#readme",
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/test/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "api/properties.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 70,
+        "lines": 70
+      }
+    }
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",

@@ -3,6 +3,11 @@ const router = express.Router();
 const pool = require('../db');
 
 const isValidListingId = (id) => /^\d{1,10}$/.test(id);
+const hasQueryValue = (value) => value !== undefined && value !== '';
+const isNonNegativeNumber = (value) =>
+    Number.isFinite(Number(value)) && Number(value) >= 0;
+const isNonNegativeInteger = (value) =>
+    Number.isInteger(Number(value)) && Number(value) >= 0;
 
 router.get('/', async (req, res) => {
     try {
@@ -15,6 +20,8 @@ router.get('/', async (req, res) => {
             ? 0
             : Number(req.query.offset);
 
+// The sort column cannot use a ? like the other values. 
+// Only let it use columns from this list to prevent SQL injection.
         const validSortColumns = new Set([
             'id',
             'L_SystemPrice',
@@ -53,26 +60,28 @@ router.get('/', async (req, res) => {
             });
         }
 
-        if (minPrice && isNaN(parseFloat(minPrice)) || minPrice < 0) {
+        if (hasQueryValue(minPrice) && !isNonNegativeNumber(minPrice)) {
             return res.status(400).json({ status: 'error', message: 'minPrice must be a valid positive number' });
         }
 
-        if (maxPrice && isNaN(parseFloat(maxPrice)) || maxPrice < 0) {
+        if (hasQueryValue(maxPrice) && !isNonNegativeNumber(maxPrice)) {
             return res.status(400).json({ status: 'error', message: 'maxPrice must be a valid positive number' });
         }
 
-        if (beds && !Number.isInteger(parseInt(beds)) || beds < 0) {
+        if (hasQueryValue(beds) && !isNonNegativeInteger(beds)) {
             return res.status(400).json({ status: 'error', message: 'beds must be a valid positive integer' });
         }
 
-        if (baths && !Number.isInteger(parseInt(baths)) || baths < 0) {
-            return res.status(400).json({ status: 'error', message: 'baths must be a valid positive integer' });
+        if (hasQueryValue(baths) && !isNonNegativeNumber(baths)) {
+            return res.status(400).json({ status: 'error', message: 'baths must be a valid positive number' });
         }
 
         if (minPrice && maxPrice && Number(minPrice) > Number(maxPrice)) {
             return res.status(400).json({ status: 'error', message: 'minPrice cannot be greater than maxPrice' });
         }
 
+  // Keep the user's values separate from the SQL so MySQL can handle them
+  // safely instead of reading them as part of the command.
         let query = 'FROM rets_property WHERE 1=1';
 
         const values = [];
@@ -111,6 +120,8 @@ router.get('/', async (req, res) => {
 
         const totalCount = countRows[0].total;
 
+    // If the page is near the end, it is faster to start from the end and read backward. 
+    // Then, reverse those rows so they still show in the right order.
         const rowsOnPage = Math.min(
             limit,
             Math.max(totalCount - offset, 0)

@@ -1,217 +1,298 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const express = require('express');
+const request = require('supertest');
 
-async function startPropertiesApp(t, query) {
-    const dbPath = require.resolve('../db');
-    const routerPath = require.resolve('../api/properties');
-    const originalDbModule = require.cache[dbPath];
+jest.mock('../db', () => ({
+    query: jest.fn(),
+}));
 
-    require.cache[dbPath] = {
-        id: dbPath,
-        filename: dbPath,
-        loaded: true,
-        exports: { query }
-    };
+const pool = require('../db');
+const app = require('../index');
 
-    delete require.cache[routerPath];
+const sampleProperty = {
+    L_ListingID: '1234567890',
+    L_Address: '1 Test Street',
+    L_City: 'Denver',
+    L_State: 'CO',
+    L_SystemPrice: 500000,
+};
 
-    const app = express();
-    app.use('/api/properties', require('../api/properties'));
-    const server = app.listen(0);
+let infoSpy;
+let errorSpy;
 
-    await new Promise((resolve) => server.once('listening', resolve));
+beforeAll(() => {
+    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+});
 
-    t.after(async () => {
-        await new Promise((resolve) => server.close(resolve));
-        delete require.cache[routerPath];
+afterAll(() => {
+    infoSpy.mockRestore();
+    errorSpy.mockRestore();
+});
 
-        if (originalDbModule) {
-            require.cache[dbPath] = originalDbModule;
-        } else {
-            delete require.cache[dbPath];
-        }
-    });
+beforeEach(() => {
+    pool.query.mockReset();
+});
 
-    return `http://127.0.0.1:${server.address().port}`;
+function mockPropertyList({ total = 1, rows = [sampleProperty] } = {}) {
+    pool.query
+        .mockResolvedValueOnce([[{ total }]])
+        .mockResolvedValueOnce([rows]);
 }
 
-test('GET /api/properties keeps minPrice and beds aligned in the count query', async (t) => {
-    const calls = [];
-    const baseUrl = await startPropertiesApp(t, async (sql, values) => {
-        calls.push({ sql, values: [...values] });
+describe('GET /api/properties', () => {
+    test('returns the default first page', async () => {
+        mockPropertyList();
 
-        if (sql.startsWith('SELECT COUNT(*)')) {
-            return [[{ total: 1 }]];
-        }
+        const response = await request(app).get('/api/properties');
 
-        return [[{ L_ListingID: 'TEST123' }]];
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+            total: 1,
+            limit: 20,
+            offset: 0,
+            results: [sampleProperty],
+        });
+        expect(pool.query).toHaveBeenCalledTimes(2);
+        expect(pool.query.mock.calls[0][1]).toEqual([]);
+        expect(pool.query.mock.calls[1][1]).toEqual([1, 0]);
     });
 
-    const response = await fetch(
-        `${baseUrl}/api/properties?minPrice=500000&beds=3`
-    );
-    const body = await response.json();
+    test('applies limit and offset pagination', async () => {
+        mockPropertyList({ total: 100, rows: [] });
 
-    assert.equal(response.status, 200);
-    assert.equal(body.total, 1);
-    assert.match(calls[0].sql, /L_SystemPrice >= \?.*L_Keyword2 = \?/s);
-    assert.deepEqual(calls[0].values, ['500000', '3']);
-    assert.deepEqual(calls[1].values, ['500000', '3', 1, 0]);
+        const response = await request(app)
+            .get('/api/properties')
+            .query({ limit: 10, offset: 20 });
+
+        expect(response.status).toBe(200);
+        expect(response.body.limit).toBe(10);
+        expect(response.body.offset).toBe(20);
+        expect(pool.query.mock.calls[1][1]).toEqual([10, 20]);
+    });
+
+    test.each([
+        ['city', 'Denver', 'L_City = ?'],
+        ['zipcode', '80202', 'L_Zip = ?'],
+        ['minPrice', '200000', 'L_SystemPrice >= ?'],
+        ['maxPrice', '900000', 'L_SystemPrice <= ?'],
+        ['beds', '3', 'L_Keyword2 = ?'],
+        ['baths', '2.5', 'LM_Dec_3 = ?'],
+    ])('applies the %s filter', async (name, value, sqlFragment) => {
+        mockPropertyList();
+
+        const response = await request(app)
+            .get('/api/properties')
+            .query({ [name]: value });
+
+        expect(response.status).toBe(200);
+        expect(pool.query.mock.calls[0][0]).toContain(sqlFragment);
+        expect(pool.query.mock.calls[0][1]).toEqual([value]);
+        expect(pool.query.mock.calls[1][1]).toEqual([value, 1, 0]);
+    });
+
+    test('combines filters in the count and results queries', async () => {
+        mockPropertyList();
+
+        const filters = {
+            city: 'Denver',
+            zipcode: '80202',
+            minPrice: '200000',
+            maxPrice: '900000',
+            beds: '3',
+            baths: '2.5',
+        };
+        const expectedValues = Object.values(filters);
+
+        const response = await request(app)
+            .get('/api/properties')
+            .query(filters);
+
+        expect(response.status).toBe(200);
+        expect(pool.query.mock.calls[0][1]).toEqual(expectedValues);
+        expect(pool.query.mock.calls[1][1]).toEqual([
+            ...expectedValues,
+            1,
+            0,
+        ]);
+    });
+
+    test.each([
+        [{ limit: 0 }, /limit/i],
+        [{ limit: 101 }, /limit/i],
+        [{ limit: 1.5 }, /limit/i],
+        [{ offset: -1 }, /offset/i],
+        [{ offset: 1.5 }, /offset/i],
+        [{ minPrice: 'invalid' }, /minPrice/i],
+        [{ minPrice: -1 }, /minPrice/i],
+        [{ maxPrice: 'invalid' }, /maxPrice/i],
+        [{ maxPrice: -1 }, /maxPrice/i],
+        [{ beds: 'invalid' }, /beds/i],
+        [{ beds: 2.5 }, /beds/i],
+        [{ baths: 'invalid' }, /baths/i],
+        [{ baths: -1 }, /baths/i],
+        [{ minPrice: 900000, maxPrice: 200000 }, /minPrice/i],
+        [{ sortBy: 'ListPrice' }, /sortBy/i],
+        [{ sortOrder: 'SIDEWAYS' }, /sortOrder/i],
+    ])('rejects invalid query input %#', async (query, messagePattern) => {
+        const response = await request(app)
+            .get('/api/properties')
+            .query(query);
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toMatch(messagePattern);
+        expect(pool.query).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        ['L_SystemPrice', 'DESC'],
+        ['OriginalEntryTimestamp', 'ASC'],
+        ['LM_Int2_3', 'DESC'],
+    ])('uses validated %s sorting', async (sortBy, sortOrder) => {
+        mockPropertyList({ total: 20, rows: [] });
+
+        const response = await request(app)
+            .get('/api/properties')
+            .query({ sortBy, sortOrder });
+
+        expect(response.status).toBe(200);
+        expect(pool.query.mock.calls[1][0]).toContain(
+            `ORDER BY ${sortBy} ${sortOrder}, id ${sortOrder}`
+        );
+    });
+
+    test('loads late pages from the nearest end and restores row order', async () => {
+        const descendingRows = [45, 44, 43, 42, 41].map((id) => ({ id }));
+        mockPropertyList({ total: 50, rows: descendingRows });
+
+        const response = await request(app)
+            .get('/api/properties')
+            .query({ limit: 5, offset: 40 });
+
+        expect(response.status).toBe(200);
+        expect(pool.query.mock.calls[1][0]).toContain('ORDER BY id DESC');
+        expect(pool.query.mock.calls[1][1]).toEqual([5, 5]);
+        expect(response.body.results.map((row) => row.id)).toEqual([
+            41, 42, 43, 44, 45,
+        ]);
+    });
+
+    test('returns 500 when the database rejects the query', async () => {
+        pool.query.mockRejectedValueOnce(new Error('Database failure'));
+
+        const response = await request(app).get('/api/properties');
+
+        expect(response.status).toBe(500);
+        expect(response.body.message).toBe('Could not retrieve properties');
+    });
 });
 
-test('GET /api/properties/:id returns the full property or 404', async (t) => {
-    const property = {
+describe('GET /api/properties/:id', () => {
+    test('returns a property', async () => {
+        pool.query.mockResolvedValueOnce([[sampleProperty]]);
+
+        const response = await request(app).get(
+            `/api/properties/${sampleProperty.L_ListingID}`
+        );
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual(sampleProperty);
+        expect(pool.query).toHaveBeenCalledWith(
+            expect.stringContaining('WHERE L_ListingID = ?'),
+            [sampleProperty.L_ListingID]
+        );
+    });
+
+    test('returns 404 when the property does not exist', async () => {
+        pool.query.mockResolvedValueOnce([[]]);
+
+        const response = await request(app).get('/api/properties/999');
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toMatch(/not found/i);
+    });
+
+    test('rejects an invalid listing ID without querying the database', async () => {
+        const response = await request(app).get('/api/properties/not-an-id');
+
+        expect(response.status).toBe(400);
+        expect(pool.query).not.toHaveBeenCalled();
+    });
+
+    test('returns 500 when the database rejects the query', async () => {
+        pool.query.mockRejectedValueOnce(new Error('Database failure'));
+
+        const response = await request(app).get('/api/properties/123');
+
+        expect(response.status).toBe(500);
+        expect(response.body.message).toBe('Could not retrieve property');
+    });
+});
+
+describe('GET /api/properties/:id/openhouses', () => {
+    const openHouse = {
+        id: 1,
         L_ListingID: '1234567890',
-        L_Address: '1 Test Street',
-        L_City: 'Irvine',
-        L_SystemPrice: 500000
+        OpenHouseDate: '2026-11-30',
+        OH_StartTime: '10:00:00',
     };
-    const baseUrl = await startPropertiesApp(t, async (sql, values) => {
-        assert.match(sql, /SELECT \* FROM rets_property/);
-        return values[0] === property.L_ListingID ? [[property]] : [[]];
+
+    test('returns the property open houses in API order', async () => {
+        pool.query
+            .mockResolvedValueOnce([[sampleProperty]])
+            .mockResolvedValueOnce([[openHouse]]);
+
+        const response = await request(app).get(
+            `/api/properties/${sampleProperty.L_ListingID}/openhouses`
+        );
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([openHouse]);
+        expect(pool.query.mock.calls[1][0]).toContain(
+            'ORDER BY OpenHouseDate ASC, OH_StartTime ASC'
+        );
     });
 
-    const foundResponse = await fetch(`${baseUrl}/api/properties/${property.L_ListingID}`);
-    assert.equal(foundResponse.status, 200);
-    assert.deepEqual(await foundResponse.json(), property);
+    test('returns an empty array when no open houses are scheduled', async () => {
+        pool.query
+            .mockResolvedValueOnce([[sampleProperty]])
+            .mockResolvedValueOnce([[]]);
 
-    const missingResponse = await fetch(`${baseUrl}/api/properties/9999999999`);
-    assert.equal(missingResponse.status, 404);
-    assert.match((await missingResponse.json()).message, /not found/i);
-});
+        const response = await request(app).get(
+            `/api/properties/${sampleProperty.L_ListingID}/openhouses`
+        );
 
-test('property ID validation returns 400 on both endpoints', async (t) => {
-    const baseUrl = await startPropertiesApp(t, async () => {
-        throw new Error('The database should not be queried for an invalid ID');
-    });
-    const oversizedId = '1'.repeat(51);
-
-    for (const path of [
-        '/api/properties/notanid',
-        '/api/properties/notanid/openhouses',
-        '/api/properties/bad$id',
-        '/api/properties/bad$id/openhouses',
-        `/api/properties/${oversizedId}`,
-        `/api/properties/${oversizedId}/openhouses`
-    ]) {
-        const response = await fetch(`${baseUrl}${path}`);
-        assert.equal(response.status, 400);
-    }
-});
-
-test('GET /api/properties/:id/openhouses returns an ordered array', async (t) => {
-    const calls = [];
-    const baseUrl = await startPropertiesApp(t, async (sql, values) => {
-        calls.push({ sql, values: [...values] });
-
-        if (sql.includes('FROM rets_property')) {
-            return [[{ L_ListingID: values[0] }]];
-        }
-
-        return [[]];
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual([]);
     });
 
-    const response = await fetch(`${baseUrl}/api/properties/1234567890/openhouses`);
+    test('returns 404 when the property does not exist', async () => {
+        pool.query.mockResolvedValueOnce([[]]);
 
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), []);
-    assert.equal(calls.length, 2);
-    assert.match(calls[1].sql, /WHERE L_ListingID = \?/);
-    assert.match(calls[1].sql, /ORDER BY OpenHouseDate ASC, OH_StartTime ASC/);
-});
+        const response = await request(app).get(
+            '/api/properties/999/openhouses'
+        );
 
-test('openhouses returns 404 for an unknown property', async (t) => {
-    let queryCount = 0;
-    const baseUrl = await startPropertiesApp(t, async () => {
-        queryCount += 1;
-        return [[]];
+        expect(response.status).toBe(404);
+        expect(response.body.message).toMatch(/not found/i);
+        expect(pool.query).toHaveBeenCalledTimes(1);
     });
 
-    const response = await fetch(`${baseUrl}/api/properties/9999999999/openhouses`);
+    test('rejects an invalid listing ID without querying the database', async () => {
+        const response = await request(app).get(
+            '/api/properties/not-an-id/openhouses'
+        );
 
-    assert.equal(response.status, 404);
-    assert.match((await response.json()).message, /not found/i);
-    assert.equal(queryCount, 1);
-});
-
-test('openhouses handles a rejected database query', async (t) => {
-    t.mock.method(console, 'error', () => {});
-    const baseUrl = await startPropertiesApp(t, async () => {
-        throw new Error('Database failure');
+        expect(response.status).toBe(400);
+        expect(pool.query).not.toHaveBeenCalled();
     });
 
-    const response = await fetch(`${baseUrl}/api/properties/1234567890/openhouses`);
+    test('returns 500 when the database rejects the query', async () => {
+        pool.query.mockRejectedValueOnce(new Error('Database failure'));
 
-    assert.equal(response.status, 500);
-    assert.deepEqual(await response.json(), {
-        status: 'error',
-        message: 'Could not retrieve open houses'
+        const response = await request(app).get(
+            '/api/properties/123/openhouses'
+        );
+
+        expect(response.status).toBe(500);
+        expect(response.body.message).toBe('Could not retrieve open houses');
     });
-});
-
-test('rejects invalid sortBy values', async (t) => {
-    let queryCount = 0;
-
-    const baseUrl = await startPropertiesApp(t, async () => {
-        queryCount += 1;
-        return [[]];
-    });
-
-    const response = await fetch(
-        `${baseUrl}/api/properties?sortBy=ListPrice&sortOrder=ASC`
-    );
-
-    assert.equal(response.status, 400);
-    assert.equal(queryCount, 0);
-
-    const body = await response.json();
-    assert.match(body.message, /invalid sortBy/i);
-});
-
-test('rejects invalid sortOrder values', async (t) => {
-    let queryCount = 0;
-
-    const baseUrl = await startPropertiesApp(t, async () => {
-        queryCount += 1;
-        return [[]];
-    });
-
-    const response = await fetch(
-        `${baseUrl}/api/properties?sortBy=L_SystemPrice&sortOrder=SIDEWAYS`
-    );
-
-    assert.equal(response.status, 400);
-    assert.equal(queryCount, 0);
-});
-
-test('uses validated price and posting-date sorting in property queries', async (t) => {
-    const calls = [];
-
-    const baseUrl = await startPropertiesApp(t, async (sql, values) => {
-        calls.push({ sql, values: [...values] });
-
-        if (sql.startsWith('SELECT COUNT(*)')) {
-            return [[{ total: 20 }]];
-        }
-
-        return [[]];
-    });
-
-    const priceResponse = await fetch(
-        `${baseUrl}/api/properties?sortBy=L_SystemPrice&sortOrder=DESC`
-    );
-
-    assert.equal(priceResponse.status, 200);
-    assert.match(calls[1].sql, /ORDER BY L_SystemPrice DESC, id DESC/);
-
-    const dateResponse = await fetch(
-        `${baseUrl}/api/properties?sortBy=OriginalEntryTimestamp&sortOrder=ASC`
-    );
-
-    assert.equal(dateResponse.status, 200);
-    assert.match(
-        calls[3].sql,
-        /ORDER BY OriginalEntryTimestamp ASC, id ASC/
-    );
 });
